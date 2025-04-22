@@ -178,13 +178,26 @@ SWAGGER_SETTINGS = {
         'Bearer': {
             'type': 'apiKey',
             'name': 'Authorization',
-            'in': 'header'
+            'in': 'header',
+            'description': 'JWT token format: Bearer <token>'
         }
     },
     'USE_SESSION_AUTH': False,
     'JSON_EDITOR': True,
+    'OPERATIONS_SORTER': 'alpha',
+    'TAGS_SORTER': 'alpha',
+    'DOC_EXPANSION': 'none',
+    'DEFAULT_MODEL_RENDERING': 'example',
+    'SHOW_REQUEST_HEADERS': True,
 }
 
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True  # For development only. Set to False in production.
 CORS_ALLOW_CREDENTIALS = True
+
+# If you need specific origins instead of allowing all origins
+# Uncomment and modify these settings
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:8000",
+#     "http://127.0.0.1:8000",
+# ]
