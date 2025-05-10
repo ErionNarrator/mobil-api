@@ -16,7 +16,7 @@ from drf_yasg import openapi
 
 from .models import UserAccount, Currency, Transaction
 from .serializers import (
-    UserSerializer, 
+    UserSerializer,
     UserAccountSerializer,
     CurrencySerializer,
     TransactionSerializer,
@@ -53,11 +53,12 @@ class RegisterView(CreateAPIView):
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
 
+
 class UserProfileView(RetrieveUpdateAPIView):
     """View for user profile management"""
     permission_classes = [IsAuthenticated]
     serializer_class = UserAccountSerializer
-    
+
     @swagger_auto_schema(
         operation_summary="Get user profile",
         operation_description="Retrieve the authenticated user's profile information",
@@ -69,7 +70,7 @@ class UserProfileView(RetrieveUpdateAPIView):
     )
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
-    
+
     @swagger_auto_schema(
         operation_summary="Update user profile",
         operation_description="Update the authenticated user's profile information",
@@ -83,7 +84,7 @@ class UserProfileView(RetrieveUpdateAPIView):
     )
     def put(self, request, *args, **kwargs):
         return super().put(request, *args, **kwargs)
-    
+
     @swagger_auto_schema(
         operation_summary="Partially update user profile",
         operation_description="Partially update the authenticated user's profile information",
@@ -102,12 +103,13 @@ class UserProfileView(RetrieveUpdateAPIView):
         """Return the logged-in user's account"""
         return self.request.user.account
 
+
 class UserAccountViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet for viewing user accounts"""
     queryset = UserAccount.objects.all()
     serializer_class = UserAccountSerializer
     permission_classes = [IsAuthenticated]
-    
+
     @swagger_auto_schema(
         operation_summary="List all accounts",
         operation_description="Returns a list of all user accounts",
@@ -132,7 +134,7 @@ class UserAccountViewSet(viewsets.ReadOnlyModelViewSet):
     )
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
-    
+
     @swagger_auto_schema(
         operation_summary="View own accounts",
         operation_description="Returns the authenticated user's account details",
@@ -148,7 +150,7 @@ class UserAccountViewSet(viewsets.ReadOnlyModelViewSet):
         user_account = request.user.account
         serializer = self.get_serializer(user_account)
         return Response(serializer.data)
-    
+
     @swagger_auto_schema(
         operation_summary="Change account currency",
         operation_description="Change the default currency of the account",
@@ -175,12 +177,12 @@ class UserAccountViewSet(viewsets.ReadOnlyModelViewSet):
         """Change default currency"""
         user_account = request.user.account
         serializer = self.get_serializer(user_account, data=request.data, partial=True)
-        
+
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
     @swagger_auto_schema(
         operation_summary="Deposit funds",
         operation_description="Add funds to the account (demo/testing only)",
@@ -212,7 +214,7 @@ class UserAccountViewSet(viewsets.ReadOnlyModelViewSet):
     def deposit(self, request):
         """Add funds to account (for demo/testing only)"""
         user_account = request.user.account
-        
+
         try:
             amount = Decimal(request.data.get('amount', 0))
             if amount <= 0:
@@ -220,7 +222,7 @@ class UserAccountViewSet(viewsets.ReadOnlyModelViewSet):
                     {"error": "Amount must be positive"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+
             # Get currency
             currency_code = request.data.get('currency_code', 'USD')
             try:
@@ -230,7 +232,7 @@ class UserAccountViewSet(viewsets.ReadOnlyModelViewSet):
                     {"error": "Currency not found"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+
             # Create deposit transaction
             transaction = Transaction.objects.create(
                 recipient=user_account,
@@ -240,13 +242,13 @@ class UserAccountViewSet(viewsets.ReadOnlyModelViewSet):
                 description="Deposit funds",
                 is_successful=True
             )
-            
+
             # Update balance
             user_account.deposit(amount)
-            
+
             serializer = self.get_serializer(user_account)
             return Response(serializer.data)
-            
+
         except (ValueError, TypeError):
             return Response(
                 {"error": "Invalid amount"},
@@ -259,7 +261,7 @@ class CurrencyViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Currency.objects.filter(is_active=True)
     serializer_class = CurrencySerializer
     permission_classes = [IsAuthenticated]
-    
+
     @swagger_auto_schema(
         operation_summary="List currencies",
         operation_description="List all active currencies",
@@ -271,7 +273,7 @@ class CurrencyViewSet(viewsets.ReadOnlyModelViewSet):
     )
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
-    
+
     @swagger_auto_schema(
         operation_summary="Get currency details",
         operation_description="Get details for a specific currency",
@@ -284,7 +286,7 @@ class CurrencyViewSet(viewsets.ReadOnlyModelViewSet):
     )
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
-    
+
     @swagger_auto_schema(
         operation_summary="Convert currency",
         operation_description="Convert an amount from one currency to another",
@@ -326,15 +328,15 @@ class CurrencyViewSet(viewsets.ReadOnlyModelViewSet):
         try:
             amount = Decimal(request.data.get('amount', 0))
             target_currency_code = request.data.get('target_currency')
-            
+
             if amount <= 0:
                 return Response(
                     {"error": "Amount must be positive"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+
             source_currency = self.get_object()
-            
+
             try:
                 target_currency = Currency.objects.get(code=target_currency_code)
             except Currency.DoesNotExist:
@@ -342,9 +344,9 @@ class CurrencyViewSet(viewsets.ReadOnlyModelViewSet):
                     {"error": "Target currency not found"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+
             converted_amount = source_currency.convert_to(amount, target_currency)
-            
+
             return Response({
                 "source_currency": source_currency.code,
                 "target_currency": target_currency.code,
@@ -352,7 +354,7 @@ class CurrencyViewSet(viewsets.ReadOnlyModelViewSet):
                 "converted_amount": float(converted_amount),
                 "exchange_rate": float(target_currency.exchange_rate / source_currency.exchange_rate)
             })
-            
+
         except (ValueError, TypeError):
             return Response(
                 {"error": "Invalid amount"},
@@ -369,7 +371,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
     filterset_fields = ['transaction_type', 'is_successful']
     ordering_fields = ['timestamp', 'amount']
     ordering = ['-timestamp']
-    
+
     @swagger_auto_schema(
         operation_summary="List transactions",
         operation_description="Get a list of transactions with optional filtering",
@@ -417,11 +419,11 @@ class TransactionViewSet(viewsets.ModelViewSet):
     )
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
-    
+
     def get_queryset(self):
         """Only return transactions related to the current user"""
         user_account = self.request.user.account
-        
+
         # Filter by transaction type if provided
         transaction_type = self.request.query_params.get('type')
         if transaction_type:
@@ -433,18 +435,18 @@ class TransactionViewSet(viewsets.ModelViewSet):
             queryset = Transaction.objects.filter(
                 Q(sender=user_account) | Q(recipient=user_account)
             )
-        
+
         # Filter by date range if provided
         start_date = self.request.query_params.get('start_date')
         end_date = self.request.query_params.get('end_date')
-        
+
         if start_date:
             try:
                 start_datetime = datetime.strptime(start_date, '%Y-%m-%d')
                 queryset = queryset.filter(timestamp__gte=start_datetime)
             except ValueError:
                 pass
-                
+
         if end_date:
             try:
                 end_datetime = datetime.strptime(end_date, '%Y-%m-%d')
@@ -453,15 +455,15 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(timestamp__lt=end_datetime)
             except ValueError:
                 pass
-        
+
         return queryset
-    
+
     def get_serializer_class(self):
         """Use different serializers for list and detail views"""
         if self.action == 'list':
             return TransactionListSerializer
         return TransactionSerializer
-    
+
     @swagger_auto_schema(
         operation_summary="Create transaction",
         operation_description="Create a new transaction",
@@ -480,7 +482,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-    
+
     @swagger_auto_schema(
         operation_summary="Recent transactions",
         operation_description="Get transactions from the last 30 days",
@@ -495,12 +497,12 @@ class TransactionViewSet(viewsets.ModelViewSet):
         """Get recent transactions (last 30 days)"""
         user_account = request.user.account
         thirty_days_ago = timezone.now() - timedelta(days=30)
-        
+
         transactions = Transaction.objects.filter(
             Q(sender=user_account) | Q(recipient=user_account),
             timestamp__gte=thirty_days_ago
         ).order_by('-timestamp')[:10]
-        
+
         serializer = TransactionListSerializer(transactions, many=True)
         return Response(serializer.data)
 
@@ -508,7 +510,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
 class TransferView(APIView):
     """View for creating transfers"""
     permission_classes = [IsAuthenticated]
-    
+
     @swagger_auto_schema(
         operation_summary="Create transfer",
         operation_description="Transfer funds to another account",
@@ -566,7 +568,7 @@ class TransferView(APIView):
             data=request.data,
             context={'request': request}
         )
-        
+
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
