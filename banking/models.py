@@ -80,18 +80,6 @@ class UserAccount(models.Model):
         unique=True,
         verbose_name=_("Phone Number")
     )
-    card_number_regex = RegexValidator(
-        regex=r'^(\d{4}[-\s]?){3}\d{4}$|^\d{16}$',
-        message=_("Card number must be 16 digits, optionally grouped in 4 digits separated by spaces or hyphens.")
-    )
-    card_number = models.CharField(
-        validators=[card_number_regex],
-        max_length=19,  # 16 digits + 3 separators
-        unique=True,
-        null=True,
-        blank=True,
-        verbose_name=_("Bank Card Number")
-    )
     default_currency = models.ForeignKey(
         Currency,
         on_delete=models.PROTECT,
