@@ -1,7 +1,6 @@
 from rest_framework import serializers
-from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
-from .models import UserAccount, Currency, Transaction
+from .models import UserAccount, Currency, Transaction, CustomUser
 from decimal import Decimal
 
 
@@ -25,12 +24,10 @@ class UserSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
-        model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'password', 'password2', 'phone_number']
+        model = CustomUser
+        fields = ['id', 'username', 'email', 'password', 'password2', 'phone_number']
         extra_kwargs = {
-            'email': {'required': True},
-            'first_name': {'required': True},
-            'last_name': {'required': True}
+            'email': {'required': True}
         }
 
     def validate(self, data):
@@ -44,12 +41,10 @@ class UserSerializer(serializers.ModelSerializer):
         phone_number = validated_data.pop('phone_number')
         validated_data.pop('password2')
 
-        # Create the User instance
-        user = User.objects.create_user(
+        # Create the CustomUser instance
+        user = CustomUser.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
-            first_name=validated_data['first_name'],
-            last_name=validated_data['last_name'],
             password=validated_data['password']
         )
 

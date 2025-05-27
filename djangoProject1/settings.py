@@ -47,7 +47,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
 
-    
+
     # Third-party apps
     'rest_framework',
     'rest_framework_simplejwt',
@@ -57,6 +57,8 @@ INSTALLED_APPS = [
     'banking',
 ]
 
+# Custom user model
+AUTH_USER_MODEL = 'banking.CustomUser'
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
@@ -96,7 +98,7 @@ WSGI_APPLICATION = 'djangoProject1.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME':'Mobilapi',
+        'NAME':'MobilDB',
         'USER': 'postgres',
         'PASSWORD': 'Root',
         'HOST': 'localhost',

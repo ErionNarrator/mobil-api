@@ -1,12 +1,99 @@
 from django.db import models
-from django.contrib.auth.models import User
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.core.validators import RegexValidator, MinValueValidator
 from django.utils.translation import gettext_lazy as _
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
 from decimal import Decimal
 import uuid
 
+
+class CustomUserManager(BaseUserManager):
+    """
+    Custom user manager where username is the unique identifier
+    """
+    def create_user(self, username, email, password=None, **extra_fields):
+        """
+        Create and save a user with the given username, email, and password.
+        """
+        if not username:
+            raise ValueError(_('The Username field must be set'))
+        if not email:
+            raise ValueError(_('The Email field must be set'))
+        
+        email = self.normalize_email(email)
+        user = self.model(username=username, email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, username, email, password=None, **extra_fields):
+        """
+        Create and save a SuperUser with the given username, email and password.
+        """
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_active', True)
+
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError(_('Superuser must have is_staff=True.'))
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError(_('Superuser must have is_superuser=True.'))
+        
+        return self.create_user(username, email, password, **extra_fields)
+
+
+class CustomUser(AbstractBaseUser, PermissionsMixin):
+    """
+    Custom User model with username and email fields
+    """
+    username = models.CharField(
+        max_length=155,
+        unique=True,
+        verbose_name=_("Username")
+    )
+    email = models.EmailField(
+        max_length=255,
+        unique=True,
+        verbose_name=_("Email Address")
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name=_("Active Status")
+    )
+    is_staff = models.BooleanField(
+        default=False,
+        verbose_name=_("Staff Status")
+    )
+    date_joined = models.DateTimeField(
+        default=timezone.now,
+        verbose_name=_("Date Joined")
+    )
+
+    objects = CustomUserManager()
+
+    USERNAME_FIELD = 'username'
+    EMAIL_FIELD = 'email'
+    REQUIRED_FIELDS = ['email']
+
+    class Meta:
+        verbose_name = _("User")
+        verbose_name_plural = _("Users")
+
+    def __str__(self):
+        return self.username
+
+    def get_full_name(self):
+        """
+        Return the username.
+        """
+        return self.username
+
+
+    def get_short_name(self):
+        """Return the short name for the user."""
+        return self.username
 
 class Currency(models.Model):
     """Model to represent supported currencies and their exchange rates"""
@@ -65,7 +152,7 @@ class Currency(models.Model):
 class UserAccount(models.Model):
     """Model to extend User with additional banking information"""
     user = models.OneToOneField(
-        User,
+        CustomUser,
         on_delete=models.CASCADE,
         related_name='account',
         verbose_name=_("User")
@@ -76,7 +163,7 @@ class UserAccount(models.Model):
     )
     phone_number = models.CharField(
         validators=[phone_regex],
-        max_length=17,
+        max_length=18,
         unique=True,
         verbose_name=_("Phone Number")
     )
@@ -253,6 +340,7 @@ class Transaction(models.Model):
             transaction_type='TRANSFER',
             description=description,
             is_successful=False
+
         )
 
         try:
@@ -272,8 +360,8 @@ class Transaction(models.Model):
         return transaction
 
 
-# Automatically create UserAccount when a User is created
-@receiver(post_save, sender=User)
+# Automatically create UserAccount when a CustomUser is created
+@receiver(post_save, sender=CustomUser)
 def create_user_account(sender, instance, created, **kwargs):
     if created:
         # Get default currency (USD)
