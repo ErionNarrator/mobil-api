@@ -20,8 +20,85 @@ from .serializers import (
     UserAccountSerializer,
     CurrencySerializer,
     TransactionSerializer,
-    TransactionListSerializer
+    TransactionListSerializer,
+    ProfileLoginSerializer
 )
+
+
+class ProfileLoginView(APIView):
+    """View for profile login that returns JWT tokens and user details"""
+    permission_classes = [AllowAny]
+    serializer_class = ProfileLoginSerializer
+
+    @swagger_auto_schema(
+        operation_summary="Login with profile details",
+        operation_description="Authenticate user and return JWT tokens along with complete user profile",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['username', 'password'],
+            properties={
+                'username': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    description='Username',
+                    example='john_doe'
+                ),
+                'password': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    description='Password',
+                    example='your_password'
+                )
+            }
+        ),
+        responses={
+            200: openapi.Response(
+                description="Successfully authenticated",
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={
+                        'access_token': openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description='JWT access token'
+                        ),
+                        'refresh_token': openapi.Schema(
+                            type=openapi.TYPE_STRING,
+                            description='JWT refresh token'
+                        ),
+                        'user_profile': openapi.Schema(
+                            type=openapi.TYPE_OBJECT,
+                            description='Complete user profile data'
+                        )
+                    }
+                )
+            ),
+            400: openapi.Response(
+                description="Bad Request",
+                examples={
+                    "application/json": {
+                        "non_field_errors": ["Unable to login with provided credentials."]
+                    }
+                }
+            )
+        },
+        tags=['authentication']
+    )
+    def post(self, request, *args, **kwargs):
+        """Handle profile login request"""
+        serializer = ProfileLoginSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            validated_data = serializer.validated_data
+            user = validated_data['user']
+            
+            # Prepare response data
+            response_data = {
+                'access_token': validated_data['access_token'],
+                'refresh_token': validated_data['refresh_token'],
+                'user_profile': UserAccountSerializer(validated_data['user_profile']).data
+            }
+            
+            return Response(response_data, status=status.HTTP_200_OK)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class RegisterView(CreateAPIView):

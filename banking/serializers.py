@@ -1,5 +1,7 @@
 from rest_framework import serializers
+from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
+from rest_framework_simplejwt.tokens import RefreshToken
 from .models import UserAccount, Currency, Transaction, CustomUser
 from decimal import Decimal
 
@@ -225,3 +227,39 @@ class TransactionListSerializer(serializers.ModelSerializer):
         if obj.recipient:
             return obj.recipient.user.username
         return None
+
+
+class ProfileLoginSerializer(serializers.Serializer):
+    """Serializer for profile login that returns JWT tokens and user details"""
+    username = serializers.CharField()
+    password = serializers.CharField(style={'input_type': 'password'})
+    
+    # Read-only fields for response
+    access_token = serializers.CharField(read_only=True)
+    refresh_token = serializers.CharField(read_only=True)
+    user_profile = UserAccountSerializer(read_only=True)
+    
+    def validate(self, data):
+        username = data.get('username')
+        password = data.get('password')
+        
+        if username and password:
+            user = authenticate(username=username, password=password)
+            
+            if user:
+                if not user.is_active:
+                    raise serializers.ValidationError('User account is disabled.')
+                
+                # Generate JWT tokens
+                refresh = RefreshToken.for_user(user)
+                
+                data['user'] = user
+                data['access_token'] = str(refresh.access_token)
+                data['refresh_token'] = str(refresh)
+                data['user_profile'] = user.account
+                
+                return data
+            else:
+                raise serializers.ValidationError('Unable to login with provided credentials.')
+        else:
+            raise serializers.ValidationError('Must include username and password.')

@@ -233,13 +233,15 @@ class UserAccount(models.Model):
         return self.balance
 
     def get_balance_in_currency(self, currency_code):
-        """Get account balance converted to specified currency"""
+        """Получить баланс в указанной валюте"""
         if currency_code == self.default_currency.code:
             return self.balance
 
-        target_currency = Currency.objects.get(code=currency_code)
-        return self.default_currency.convert_to(self.balance, target_currency)
-
+        try:
+            target_currency = Currency.objects.get(code=currency_code)
+            return self.default_currency.convert_to(self.balance, target_currency)
+        except Currency.DoesNotExist:
+            return Decimal('0.00')
 
 class Transaction(models.Model):
     """Model to track money transfers and operations"""
