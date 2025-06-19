@@ -13,7 +13,7 @@ from .views import (
     CurrencyViewSet,
     TransactionViewSet,
     TransferView,
-    ProfileLoginView
+    ProfileLoginView, search_accounts
 )
 
 # Create a router for ViewSets
@@ -33,6 +33,7 @@ urlpatterns = [
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('auth/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
 
+    path('api/accounts/search/', search_accounts, name='account-search'),
     # User profile
     path('profile/', UserProfileView.as_view(), name='user_profile'),
 
