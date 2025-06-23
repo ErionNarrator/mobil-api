@@ -7,7 +7,6 @@ from decimal import Decimal
 
 
 class UserSerializer(serializers.ModelSerializer):
-    """Serializer for User registration and profile information"""
     password = serializers.CharField(
         write_only=True,
         required=True,
@@ -33,25 +32,21 @@ class UserSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, data):
-        # Check if passwords match
         if data['password'] != data['password2']:
             raise serializers.ValidationError({"password": "Password fields did not match."})
         return data
 
     def create(self, validated_data):
-        # Remove password2 and phone_number from the data used to create User
         phone_number = validated_data.pop('phone_number')
         validated_data.pop('password2')
 
-        # Create the CustomUser instance
         user = CustomUser.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
             password=validated_data['password']
         )
 
-        # Update the phone number in UserAccount
-        # UserAccount is automatically created via signal, so we just update it
+
         user.account.phone_number = phone_number
         user.account.save()
 
@@ -59,7 +54,6 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class CurrencySerializer(serializers.ModelSerializer):
-    """Serializer for Currency model"""
 
     class Meta:
         model = Currency
@@ -68,7 +62,6 @@ class CurrencySerializer(serializers.ModelSerializer):
 
 
 class UserAccountSerializer(serializers.ModelSerializer):
-    """Serializer for UserAccount model"""
     user = UserSerializer(read_only=True)
     default_currency = CurrencySerializer(read_only=True)
     default_currency_code = serializers.CharField(write_only=True, required=False)
@@ -98,7 +91,6 @@ class UserAccountSerializer(serializers.ModelSerializer):
         return float(obj.get_balance_in_currency('RUB'))
 
     def update(self, instance, validated_data):
-        # Handle currency change if provided
         if 'default_currency_code' in validated_data:
             currency_code = validated_data.pop('default_currency_code')
             try:
@@ -111,13 +103,11 @@ class UserAccountSerializer(serializers.ModelSerializer):
 
 
 class TransactionSerializer(serializers.ModelSerializer):
-    """Serializer for Transaction model"""
     sender_username = serializers.SerializerMethodField()
     recipient_username = serializers.SerializerMethodField()
     currency_code = serializers.CharField(source='currency.code', read_only=True)
     currency_symbol = serializers.CharField(source='currency.symbol', read_only=True)
 
-    # Fields for creating a transaction
     recipient_id = serializers.IntegerField(write_only=True, required=False)
     recipient_phone = serializers.CharField(write_only=True, required=False)
     currency_id = serializers.CharField(write_only=True)
@@ -150,13 +140,11 @@ class TransactionSerializer(serializers.ModelSerializer):
         recipient_id = data.get('recipient_id')
         recipient_phone = data.get('recipient_phone')
 
-        # Either recipient ID or phone must be provided
         if not recipient_id and not recipient_phone:
             raise serializers.ValidationError({
                 "recipient": "Either recipient_id or recipient_phone must be provided"
             })
 
-        # Amount must be positive
         if data.get('amount', 0) <= 0:
             raise serializers.ValidationError({
                 "amount": "Amount must be positive"
@@ -165,10 +153,8 @@ class TransactionSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        # Get the sender (current user's account)
         sender = self.context['request'].user.account
 
-        # Find recipient by ID or phone number
         recipient = None
         if 'recipient_id' in validated_data:
             try:
@@ -181,7 +167,6 @@ class TransactionSerializer(serializers.ModelSerializer):
             except UserAccount.DoesNotExist:
                 raise serializers.ValidationError({"recipient_phone": "Recipient with this phone number not found"})
 
-        # Get currency
         try:
             currency = Currency.objects.get(code=validated_data.pop('currency_id'))
         except Currency.DoesNotExist:
@@ -190,7 +175,6 @@ class TransactionSerializer(serializers.ModelSerializer):
         amount = Decimal(validated_data.pop('amount'))
         description = validated_data.pop('description', '')
 
-        # Execute the transfer
         try:
             transaction = Transaction.transfer(
                 sender=sender,
@@ -205,7 +189,6 @@ class TransactionSerializer(serializers.ModelSerializer):
 
 
 class TransactionListSerializer(serializers.ModelSerializer):
-    """Simplified serializer for listing transactions"""
     sender_username = serializers.SerializerMethodField()
     recipient_username = serializers.SerializerMethodField()
     currency_code = serializers.CharField(source='currency.code')
@@ -230,11 +213,9 @@ class TransactionListSerializer(serializers.ModelSerializer):
 
 
 class ProfileLoginSerializer(serializers.Serializer):
-    """Serializer for profile login that returns JWT tokens and user details"""
     username = serializers.CharField()
     password = serializers.CharField(style={'input_type': 'password'})
     
-    # Read-only fields for response
     access_token = serializers.CharField(read_only=True)
     refresh_token = serializers.CharField(read_only=True)
     user_profile = UserAccountSerializer(read_only=True)
@@ -250,7 +231,6 @@ class ProfileLoginSerializer(serializers.Serializer):
                 if not user.is_active:
                     raise serializers.ValidationError('User account is disabled.')
                 
-                # Generate JWT tokens
                 refresh = RefreshToken.for_user(user)
                 
                 data['user'] = user

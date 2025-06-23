@@ -16,14 +16,14 @@ from .views import (
     ProfileLoginView, search_accounts
 )
 
-# Create a router for ViewSets
+
 router = DefaultRouter()
 router.register(r'accounts', UserAccountViewSet)
 router.register(r'currencies', CurrencyViewSet)
 router.register(r'transactions', TransactionViewSet)
 
 urlpatterns = [
-    # Include router URLs
+
     path('', include(router.urls)),
 
     # Authentication endpoints
@@ -37,7 +37,7 @@ urlpatterns = [
     # User profile
     path('profile/', UserProfileView.as_view(), name='user_profile'),
 
-    # Transfer endpoint
+
     path('transfer/', TransferView.as_view(), name='transfer'),
 
     # DRF auth

@@ -10,13 +10,9 @@ import uuid
 
 
 class CustomUserManager(BaseUserManager):
-    """
-    Custom user manager where username is the unique identifier
-    """
+
     def create_user(self, username, email, password=None, **extra_fields):
-        """
-        Create and save a user with the given username, email, and password.
-        """
+
         if not username:
             raise ValueError(_('The Username field must be set'))
         if not email:
@@ -29,9 +25,7 @@ class CustomUserManager(BaseUserManager):
         return user
 
     def create_superuser(self, username, email, password=None, **extra_fields):
-        """
-        Create and save a SuperUser with the given username, email and password.
-        """
+
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_active', True)
@@ -45,9 +39,7 @@ class CustomUserManager(BaseUserManager):
 
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
-    """
-    Custom User model with username and email fields
-    """
+
     username = models.CharField(
         max_length=155,
         unique=True,
@@ -85,18 +77,14 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         return self.username
 
     def get_full_name(self):
-        """
-        Return the username.
-        """
+
         return self.username
 
 
     def get_short_name(self):
-        """Return the short name for the user."""
         return self.username
 
 class Currency(models.Model):
-    """Model to represent supported currencies and their exchange rates"""
     CURRENCY_CHOICES = [
         ('USD', 'US Dollar'),
         ('EUR', 'Euro'),
@@ -112,7 +100,6 @@ class Currency(models.Model):
     )
     name = models.CharField(max_length=32, verbose_name=_("Currency Name"))
     symbol = models.CharField(max_length=5, verbose_name=_("Currency Symbol"))
-    # Rate relative to USD (1 USD = X of this currency)
     exchange_rate = models.DecimalField(
         max_digits=10,
         decimal_places=4,
@@ -129,28 +116,16 @@ class Currency(models.Model):
         return f"{self.code} ({self.name})"
 
     def convert_to(self, amount, target_currency):
-        """
-        Convert an amount from this currency to the target currency
 
-        Args:
-            amount (Decimal): The amount to convert
-            target_currency (Currency): The currency to convert to
-
-        Returns:
-            Decimal: The converted amount
-        """
         if self.code == target_currency.code:
             return amount
 
-        # Convert to USD first (as base currency)
         amount_in_usd = amount / self.exchange_rate
 
-        # Then convert from USD to target currency
         return amount_in_usd * target_currency.exchange_rate
 
 
 class UserAccount(models.Model):
-    """Model to extend User with additional banking information"""
     user = models.OneToOneField(
         CustomUser,
         on_delete=models.CASCADE,
@@ -199,16 +174,13 @@ class UserAccount(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.account_number:
-            # Generate a unique account number if not already set
             self.account_number = f"ACC{uuid.uuid4().hex[:16].upper()}"
         super().save(*args, **kwargs)
 
     def has_sufficient_balance(self, amount):
-        """Check if account has sufficient balance for a transaction"""
         return self.balance >= amount
 
     def deposit(self, amount):
-        """Deposit funds to the account"""
         if amount <= 0:
             raise ValueError(_("Deposit amount must be positive"))
 
@@ -218,7 +190,6 @@ class UserAccount(models.Model):
         return self.balance
 
     def withdraw(self, amount):
-        """Withdraw funds from the account"""
         amount = Decimal(amount)
 
         if amount <= 0:
@@ -233,7 +204,6 @@ class UserAccount(models.Model):
         return self.balance
 
     def get_balance_in_currency(self, currency_code):
-        """Получить баланс в указанной валюте"""
         if currency_code == self.default_currency.code:
             return self.balance
 
@@ -244,7 +214,6 @@ class UserAccount(models.Model):
             return Decimal('0.00')
 
 class Transaction(models.Model):
-    """Model to track money transfers and operations"""
     TRANSACTION_TYPES = [
         ('TRANSFER', 'Transfer'),
         ('DEPOSIT', 'Deposit'),
@@ -314,26 +283,13 @@ class Transaction(models.Model):
 
     @classmethod
     def transfer(cls, sender, recipient, amount, currency, description=""):
-        """
-        Create and process a transfer between accounts
 
-        Args:
-            sender (UserAccount): The sending account
-            recipient (UserAccount): The receiving account
-            amount (Decimal): The amount to transfer
-            currency (Currency): The currency of the transfer
-            description (str, optional): Transaction description
-
-        Returns:
-            Transaction: The created transaction
-        """
         if sender == recipient:
             raise ValueError(_("Cannot transfer to the same account"))
 
         if not sender.has_sufficient_balance(amount):
             raise ValueError(_("Insufficient funds for transfer"))
 
-        # Create the transaction first (not marked successful yet)
         transaction = cls.objects.create(
             sender=sender,
             recipient=recipient,
@@ -346,27 +302,22 @@ class Transaction(models.Model):
         )
 
         try:
-            # Process the transfer
             sender.withdraw(amount)
             recipient.deposit(amount)
 
-            # Mark as successful
             transaction.is_successful = True
             transaction.save(update_fields=['is_successful'])
 
         except Exception as e:
-            # Transaction failed, don't update is_successful flag
-            # Log the error here if needed
+
             raise e
 
         return transaction
 
 
-# Automatically create UserAccount when a CustomUser is created
 @receiver(post_save, sender=CustomUser)
 def create_user_account(sender, instance, created, **kwargs):
     if created:
-        # Get default currency (USD)
         default_currency, _ = Currency.objects.get_or_create(
             code='USD',
             defaults={

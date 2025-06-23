@@ -193,7 +193,6 @@ class CurrencyViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class TransactionViewSet(viewsets.ModelViewSet):
-    """ViewSet for transaction operations"""
     queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
     permission_classes = [IsAuthenticated]
@@ -203,7 +202,6 @@ class TransactionViewSet(viewsets.ModelViewSet):
     ordering = ['-timestamp']
 
     def get_queryset(self):
-        """Only return transactions related to the current user"""
         user_account = self.request.user.account
 
         queryset = Transaction.objects.filter(
@@ -236,14 +234,12 @@ class TransactionViewSet(viewsets.ModelViewSet):
         return queryset
 
     def get_serializer_class(self):
-        """Use different serializers for list and detail views"""
         if self.action == 'list':
             return TransactionListSerializer
         return TransactionSerializer
 
     @action(detail=False, methods=['get'])
     def recent(self, request):
-        """Get transactions from the last 30 days"""
         user_account = request.user.account
         thirty_days_ago = timezone.now() - timedelta(days=30)
 
@@ -257,7 +253,6 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
 
 class TransferView(APIView):
-    """View for creating transfers"""
     permission_classes = [IsAuthenticated]
 
     def post(self, request, format=None):
@@ -274,7 +269,6 @@ class TransferView(APIView):
 
 @api_view(['GET'])
 def search_accounts(request):
-    """Search accounts by username, email, phone or account number"""
     query = request.GET.get('query', '').strip()
 
     if not query or len(query) < 2:
